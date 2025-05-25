@@ -57,16 +57,12 @@ def load_data():
     df = pd.read_sql_query(query, conn)
     conn.close()
     
-    # Convert date columns if they exist and contain timestamps
+    # Handle date columns - now they're already stored as strings in the database
     date_columns = ['CEC Listing Date', 'Last Update', 'Date Added to Tool']
     for col in date_columns:
         if col in df.columns:
-            # Skip Date Added to Tool as it's already in the right format
-            if col == 'Date Added to Tool':
-                continue
             df[col] = df[col].apply(
-                lambda x: datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') 
-                if pd.notna(x) and str(x).strip() != "" else None
+                lambda x: x[:10] if pd.notna(x) and isinstance(x, str) and len(x) > 10 else x
             )
     
     return df
