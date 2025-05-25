@@ -80,20 +80,34 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Title and description
-st.title("☀️ Solar Equipment Explorer")
-st.markdown("A minimalist interface for exploring solar equipment data from the California Energy Commission.")
+# Add custom CSS to make the search bar narrower
+st.markdown("""
+<style>
+    /* Make the search input narrower */
+    [data-testid="stTextInput"] {
+        max-width: 250px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Add a refresh button to clear the cache and reload data
-col1, col2 = st.columns([1, 5])
+# Create a layout with title on left and search bar on right
+col1, col2 = st.columns([3, 1])
+
+# Title and description in the left column
 with col1:
+    st.title("☀️ Solar Equipment Explorer")
+    st.markdown("A minimalist interface for exploring solar equipment data from the California Energy Commission.")
+    
+    # Add a refresh button to clear the cache and reload data
     if st.button("🔄 Refresh Data"):
         st.cache_data.clear()
         st.experimental_rerun()
 
-# Global search bar
+# Global search bar in the right column with reduced width
 with col2:
-    search_query = st.text_input("Search by Manufacturer or Model Number", "", placeholder="Search by Manufacturer or Model Number only")
+    st.write("")
+    search_query = st.text_input("Search by Manufacturer or Model Number: ", "", placeholder="")
+
 
 # Function to load PV module data
 @st.cache_data
@@ -132,7 +146,7 @@ def load_inverter_data():
     return df
 
 # Create tabs for equipment types
-tab1, tab2 = st.tabs(["PV Modules", "Inverters"])
+tab1, tab2 = st.tabs(["PV Modules", "Grid Support Inverter List"])
 
 # Function to display equipment data with consistent formatting
 def display_equipment_data(equipment_type, df, id_column, manufacturer_column, model_column, efficiency_column, power_column):
@@ -153,14 +167,36 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
             # Keep df as is if there's an error
     
     # Display statistics in a consistent format
+    # Determine which date column to use based on equipment type
+    date_column = 'CEC Listing Date' if equipment_type == "PV Modules" else 'Grid Support Listing Date'
+    
     # Handle the date formatting safely
-    latest_update = "N/A"
-    if 'Date Added to Tool' in df.columns and not df.empty:
-        max_date = df['Date Added to Tool'].max()
-        if isinstance(max_date, str) and ' ' in max_date:
-            latest_update = max_date.split(' ')[0]
-        else:
-            latest_update = str(max_date)
+    latest_listing_date = "N/A"
+    if date_column in df.columns and not df.empty:
+        try:
+            # Filter out None, 'None', and empty values before finding max date
+            valid_dates = df[df[date_column].notna() & 
+                             (df[date_column].astype(str) != 'None') & 
+                             (df[date_column].astype(str) != '')][date_column]
+            
+            if not valid_dates.empty:
+                max_date = valid_dates.max()
+                if isinstance(max_date, str) and len(max_date) > 0:
+                    # If it contains time, just take the date part
+                    if ' ' in max_date:
+                        latest_listing_date = max_date.split(' ')[0]
+                    else:
+                        latest_listing_date = max_date
+                else:
+                    latest_listing_date = str(max_date) if max_date else "N/A"
+            else:
+                latest_listing_date = "N/A"
+        except Exception as e:
+            print(f"Error processing dates: {e}")
+            latest_listing_date = "N/A"
+    
+    # Format the label based on equipment type
+    date_label = "Latest CEC Listing Date" if equipment_type == "PV Modules" else "Latest Grid Support Listing Date"
     
     st.markdown("""
     <div class="stat-container">
@@ -173,14 +209,15 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
             <div class="stat-value">{}</div>
         </div>
         <div class="stat-box">
-            <div class="stat-label">Latest Update</div>
+            <div class="stat-label">{}</div>
             <div class="stat-value">{}</div>
         </div>
     </div>
     """.format(
         len(df), 
         df[manufacturer_column].nunique(),
-        latest_update
+        date_label,
+        latest_listing_date
     ), unsafe_allow_html=True)
     
     # Display filtered data
@@ -233,8 +270,8 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     if equipment_type == "PV Modules":
         # Set specific default columns for PV Modules
         default_columns = ['module_id', 'Manufacturer', 'Model Number', 'CEC Listing Date', 'Technology', 'Nameplate Pmax (W)']
-    else:  # Inverters
-        # Set specific default columns for Inverters
+    else:  # Grid Support Inverter List
+        # Set specific default columns for Grid Support Inverter List
         default_columns = ['inverter_id', 'Manufacturer Name', 'Model Number1', 'Grid Support Listing Date', 'Description']
     
     # Keep only columns that exist in the dataframe
@@ -269,13 +306,13 @@ with tab1:
             'Power Rating (W)'
         )
 
-# Inverters Tab
+# Grid Support Inverter List Tab
 with tab2:
     # Load inverter data
-    with st.spinner("Loading Inverters data..."):
+    with st.spinner("Loading Grid Support Inverter List data..."):
         df_inv = load_inverter_data()
         filtered_df_inv = display_equipment_data(
-            "Inverters",
+            "Grid Support Inverter List",
             df_inv,
             'inverter_id',
             'Manufacturer Name',
@@ -428,10 +465,10 @@ with tab1:
     )
 
 with tab2:
-    # Add visualization section for Inverters
+    # Add visualization section for Grid Support Inverter List
     display_visualizations(
         filtered_df_inv,
-        "Inverters",
+        "Grid Support Inverter List",
         'Manufacturer Name',
         'Weighted Efficiency (%)',
         'Maximum Continuous Output Power at Unity Power Factor ((kW))'
@@ -468,8 +505,8 @@ with tab1:
     display_comparison(filtered_df_pv, "PV Modules", 'module_id')
 
 with tab2:
-    # Add comparison section for Inverters
-    display_comparison(filtered_df_inv, "Inverters", 'inverter_id')
+    # Add comparison section for Grid Support Inverter List
+    display_comparison(filtered_df_inv, "Grid Support Inverter List", 'inverter_id')
 
 # Footer
 st.markdown("---")
