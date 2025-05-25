@@ -112,36 +112,34 @@ with col2:
 # Function to load PV module data
 @st.cache_data
 def load_pv_data():
-    conn = sqlite3.connect('pv_modules.db')
-    query = "SELECT * FROM pv_modules"
-    df = pd.read_sql_query(query, conn)
-    conn.close()
+    with sqlite3.connect('pv_modules.db') as conn:
+        query = "SELECT * FROM pv_modules"
+        df = pd.read_sql_query(query, conn)
     
     # Handle date columns - they're already stored as strings in the database
     date_columns = ['CEC Listing Date', 'Last Update', 'Date Added to Tool']
     for col in date_columns:
         if col in df.columns:
-            df[col] = df[col].apply(
-                lambda x: x[:10] if pd.notna(x) and isinstance(x, str) and len(x) > 10 else x
-            )
+            # Vectorized operation instead of apply
+            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
+            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
     
     return df
 
 # Function to load inverter data
 @st.cache_data
 def load_inverter_data():
-    conn = sqlite3.connect('inverters.db')
-    query = "SELECT * FROM inverters"
-    df = pd.read_sql_query(query, conn)
-    conn.close()
+    with sqlite3.connect('inverters.db') as conn:
+        query = "SELECT * FROM inverters"
+        df = pd.read_sql_query(query, conn)
     
     # Handle date columns - they're already stored as strings in the database
     date_columns = ['Date Added to Tool', 'Last Update', 'Grid Support Listing Date']
     for col in date_columns:
         if col in df.columns:
-            df[col] = df[col].apply(
-                lambda x: x[:10] if pd.notna(x) and isinstance(x, str) and len(x) > 10 else x
-            )
+            # Vectorized operation instead of apply
+            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
+            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
     
     return df
 
