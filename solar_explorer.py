@@ -1,0 +1,475 @@
+import streamlit as st
+import pandas as pd
+import sqlite3
+import plotly.express as px
+from datetime import datetime
+
+# Set page configuration
+st.set_page_config(
+    page_title="Solar Equipment Explorer",
+    page_icon="☀️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for a minimalist aesthetic
+st.markdown("""
+<style>
+    .main {
+        background-color: #f8f9fa;
+    }
+    .stButton button {
+        background-color: #343a40;
+        color: white;
+    }
+    .stDataFrame {
+        padding: 10px;
+    }
+    h1, h2, h3 {
+        color: #343a40;
+    }
+    .stSidebar {
+        background-color: #f8f9fa;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0px;
+        justify-content: flex-start;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 60px;
+        white-space: pre-wrap;
+        background-color: white;
+        border-radius: 4px 4px 0 0;
+        padding: 15px 30px;
+        min-width: 250px;
+        font-size: 20px;
+        font-weight: 400;
+        color: #666;
+        border: 1px solid #eee;
+        border-bottom: none;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #f0f2f6;
+        border-bottom: 3px solid #4e8df5;
+        font-weight: 700;
+        color: #333;
+    }
+    .stat-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    .stat-box {
+        background-color: white;
+        border-radius: 5px;
+        padding: 15px 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        width: 30%;
+        text-align: center;
+    }
+    .stat-label {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Title and description
+st.title("☀️ Solar Equipment Explorer")
+st.markdown("A minimalist interface for exploring solar equipment data from the California Energy Commission.")
+
+# Add a refresh button to clear the cache and reload data
+col1, col2 = st.columns([1, 5])
+with col1:
+    if st.button("🔄 Refresh Data"):
+        st.cache_data.clear()
+        st.experimental_rerun()
+
+# Global search bar
+with col2:
+    search_query = st.text_input("Search by Manufacturer or Model Number", "", placeholder="Search by Manufacturer or Model Number only")
+
+# Function to load PV module data
+@st.cache_data
+def load_pv_data():
+    conn = sqlite3.connect('pv_modules.db')
+    query = "SELECT * FROM pv_modules"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    # Handle date columns - they're already stored as strings in the database
+    date_columns = ['CEC Listing Date', 'Last Update', 'Date Added to Tool']
+    for col in date_columns:
+        if col in df.columns:
+            df[col] = df[col].apply(
+                lambda x: x[:10] if pd.notna(x) and isinstance(x, str) and len(x) > 10 else x
+            )
+    
+    return df
+
+# Function to load inverter data
+@st.cache_data
+def load_inverter_data():
+    conn = sqlite3.connect('inverters.db')
+    query = "SELECT * FROM inverters"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    # Handle date columns - they're already stored as strings in the database
+    date_columns = ['Date Added to Tool', 'Last Update', 'Grid Support Listing Date']
+    for col in date_columns:
+        if col in df.columns:
+            df[col] = df[col].apply(
+                lambda x: x[:10] if pd.notna(x) and isinstance(x, str) and len(x) > 10 else x
+            )
+    
+    return df
+
+# Create tabs for equipment types
+tab1, tab2 = st.tabs(["PV Modules", "Inverters"])
+
+# Function to display equipment data with consistent formatting
+def display_equipment_data(equipment_type, df, id_column, manufacturer_column, model_column, efficiency_column, power_column):
+    # Apply global search if provided
+    if search_query:
+        try:
+            # Handle potential errors in string operations
+            search_results = df[df[manufacturer_column].astype(str).str.contains(search_query, case=False, na=False) | 
+                              df[model_column].astype(str).str.contains(search_query, case=False, na=False)]
+            
+            # Only update df if we found results
+            if not search_results.empty:
+                df = search_results
+            else:
+                st.warning(f"No items found matching '{search_query}'. Showing all items instead.")
+        except Exception as e:
+            st.error(f"Search error: {e}. Showing all items instead.")
+            # Keep df as is if there's an error
+    
+    # Display statistics in a consistent format
+    # Handle the date formatting safely
+    latest_update = "N/A"
+    if 'Date Added to Tool' in df.columns and not df.empty:
+        max_date = df['Date Added to Tool'].max()
+        if isinstance(max_date, str) and ' ' in max_date:
+            latest_update = max_date.split(' ')[0]
+        else:
+            latest_update = str(max_date)
+    
+    st.markdown("""
+    <div class="stat-container">
+        <div class="stat-box">
+            <div class="stat-label">Total Items</div>
+            <div class="stat-value">{}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Manufacturers</div>
+            <div class="stat-value">{}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Latest Update</div>
+            <div class="stat-value">{}</div>
+        </div>
+    </div>
+    """.format(
+        len(df), 
+        df[manufacturer_column].nunique(),
+        latest_update
+    ), unsafe_allow_html=True)
+    
+    # Display filtered data
+    st.subheader(f"Filtered {equipment_type}")
+    st.write(f"Showing {len(df)} items")
+    
+    # Sidebar for filtering
+    with st.sidebar:
+        st.header("Filters")
+        
+        # Filter by manufacturer
+        manufacturers = ["All"] + sorted(df[manufacturer_column].unique().tolist())
+        selected_manufacturer = st.selectbox("Manufacturer", manufacturers)
+        
+        # Filter by efficiency if available
+        if efficiency_column in df.columns:
+            try:
+                min_efficiency = float(df[efficiency_column].min())
+                max_efficiency = float(df[efficiency_column].max())
+                efficiency_range = st.slider(
+                    f"Efficiency (%)",
+                    min_efficiency,
+                    max_efficiency,
+                    (min_efficiency, max_efficiency)
+                )
+            except (ValueError, TypeError):
+                st.warning(f"Cannot filter by {efficiency_column} due to data type issues.")
+                efficiency_column = None
+    
+    # Apply filters
+    filtered_df = df.copy()
+    
+    if selected_manufacturer != "All":
+        filtered_df = filtered_df[filtered_df[manufacturer_column] == selected_manufacturer]
+    
+    if efficiency_column and efficiency_column in df.columns:
+        try:
+            filtered_df = filtered_df[
+                (filtered_df[efficiency_column].astype(float) >= efficiency_range[0]) &
+                (filtered_df[efficiency_column].astype(float) <= efficiency_range[1])
+            ]
+        except (ValueError, TypeError):
+            st.warning(f"Could not apply {efficiency_column} filter due to data type issues.")
+    
+    # Select columns to display
+    all_columns = df.columns.tolist()
+    default_columns = [id_column, manufacturer_column, model_column]
+    
+    # Add equipment-specific columns to defaults
+    if equipment_type == "PV Modules":
+        default_columns.extend(['PTC Efficiency (%)', 'Power Rating (W)', 'Date Added to Tool'])
+    else:  # Inverters
+        default_columns.extend(['Weighted Efficiency (%)', 'Maximum Continuous Output Power at Unity Power Factor ((kW))', 'Date Added to Tool'])
+    
+    # Keep only columns that exist in the dataframe
+    default_columns = [col for col in default_columns if col in all_columns]
+    
+    selected_columns = st.multiselect(
+        "Select columns to display",
+        all_columns,
+        default=default_columns,
+        key=f"columns_{equipment_type}"
+    )
+    
+    if selected_columns:
+        st.dataframe(filtered_df[selected_columns], use_container_width=True)
+    else:
+        st.dataframe(filtered_df, use_container_width=True)
+    
+    return filtered_df
+
+# PV Modules Tab
+with tab1:
+    # Load PV module data
+    with st.spinner("Loading PV Modules data..."):
+        df_pv = load_pv_data()
+        filtered_df_pv = display_equipment_data(
+            "PV Modules",
+            df_pv,
+            'module_id',
+            'Manufacturer',
+            'Model Number',
+            'PTC Efficiency (%)',
+            'Power Rating (W)'
+        )
+
+# Inverters Tab
+with tab2:
+    # Load inverter data
+    with st.spinner("Loading Inverters data..."):
+        df_inv = load_inverter_data()
+        filtered_df_inv = display_equipment_data(
+            "Inverters",
+            df_inv,
+            'inverter_id',
+            'Manufacturer Name',
+            'Model Number1',
+            'Weighted Efficiency (%)',
+            'Maximum Continuous Output Power at Unity Power Factor ((kW))'
+        )
+
+# Add visualization section to each tab
+def display_visualizations(filtered_df, equipment_type, manufacturer_column, efficiency_column, power_column):
+    st.subheader("Data Visualization")
+    # Add a unique key for each selectbox based on equipment_type
+    chart_type = st.selectbox(
+        "Select chart type",
+        ["Manufacturer Distribution", "Efficiency Comparison", "Power Comparison", "Correlation Plot"],
+        key=f"chart_type_{equipment_type}"
+    )
+    
+    if chart_type == "Manufacturer Distribution":
+        # Group manufacturers by count
+        manufacturer_counts = filtered_df[manufacturer_column].value_counts().reset_index()
+        manufacturer_counts.columns = ['Manufacturer', 'Count']
+        
+        # Calculate percentage
+        total = manufacturer_counts['Count'].sum()
+        manufacturer_counts['Percentage'] = (manufacturer_counts['Count'] / total * 100).round(1)
+        
+        # Keep only top 10 manufacturers, group others
+        top_n = 10
+        if len(manufacturer_counts) > top_n:
+            top_manufacturers = manufacturer_counts.head(top_n).copy()
+            other_count = manufacturer_counts.iloc[top_n:]['Count'].sum()
+            other_percentage = manufacturer_counts.iloc[top_n:]['Percentage'].sum()
+            
+            # Add "Other" category
+            other_row = pd.DataFrame({
+                'Manufacturer': ['Other'],
+                'Count': [other_count],
+                'Percentage': [other_percentage.round(1)]
+            })
+            
+            manufacturer_counts = pd.concat([top_manufacturers, other_row])
+        
+        # Sort by percentage descending
+        manufacturer_counts = manufacturer_counts.sort_values('Percentage', ascending=True)
+        
+        # Create a custom color palette - distinct colors for top categories, gray for "Other"
+        colors = px.colors.qualitative.Bold[:top_n]
+        if len(manufacturer_counts) > top_n:
+            colors.append('#CCCCCC')  # Gray for "Other"
+        
+        # Create horizontal bar chart
+        fig = px.bar(
+            manufacturer_counts,
+            y='Manufacturer',
+            x='Percentage',
+            title=f'Share of {equipment_type} by Manufacturer (%)',
+            color='Manufacturer',
+            color_discrete_sequence=colors,
+            text='Percentage',
+            orientation='h',
+            height=500
+        )
+        
+        # Improve layout
+        fig.update_traces(texttemplate='%{text}%', textposition='outside')
+        fig.update_layout(
+            xaxis_title='Market Share (%)',
+            yaxis_title='Manufacturer',
+            showlegend=False,
+            margin=dict(l=20, r=20, t=40, b=20),
+            xaxis=dict(range=[0, max(manufacturer_counts['Percentage']) * 1.15])  # Add space for labels
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    elif chart_type == "Efficiency Comparison" and efficiency_column in filtered_df.columns:
+        try:
+            fig = px.box(
+                filtered_df,
+                x=manufacturer_column,
+                y=efficiency_column,
+                title=f'Efficiency Comparison by Manufacturer',
+                color=manufacturer_column,
+                color_discrete_sequence=px.colors.qualitative.Bold,
+                height=500
+            )
+            fig.update_layout(
+                xaxis_title='Manufacturer',
+                yaxis_title='Efficiency (%)',
+                showlegend=False,
+                xaxis={'categoryorder':'total descending'}
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Could not create efficiency comparison chart: {e}")
+    
+    elif chart_type == "Power Comparison" and power_column in filtered_df.columns:
+        try:
+            fig = px.box(
+                filtered_df,
+                x=manufacturer_column,
+                y=power_column,
+                title=f'Power Rating Comparison by Manufacturer',
+                color=manufacturer_column,
+                color_discrete_sequence=px.colors.qualitative.Bold,
+                height=500
+            )
+            fig.update_layout(
+                xaxis_title='Manufacturer',
+                yaxis_title='Power Rating',
+                showlegend=False,
+                xaxis={'categoryorder':'total descending'}
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Could not create power comparison chart: {e}")
+    
+    elif chart_type == "Correlation Plot":
+        # Select only numeric columns for correlation
+        numeric_cols = filtered_df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+        
+        if len(numeric_cols) >= 2:
+            # Add unique keys for each axis selectbox based on equipment_type
+            x_axis = st.selectbox("X-axis", numeric_cols, index=0, key=f"x_axis_{equipment_type}")
+            y_axis = st.selectbox("Y-axis", numeric_cols, index=min(1, len(numeric_cols)-1), key=f"y_axis_{equipment_type}")
+            
+            fig = px.scatter(
+                filtered_df,
+                x=x_axis,
+                y=y_axis,
+                color=manufacturer_column,
+                title=f'{y_axis} vs {x_axis}',
+                color_discrete_sequence=px.colors.qualitative.Bold,
+                height=500
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Not enough numeric columns available for correlation plot.")
+
+# Update the tab content to include visualizations
+with tab1:
+    # Add visualization section for PV Modules
+    display_visualizations(
+        filtered_df_pv,
+        "PV Modules",
+        'Manufacturer',
+        'PTC Efficiency (%)',
+        'Power Rating (W)'
+    )
+
+with tab2:
+    # Add visualization section for Inverters
+    display_visualizations(
+        filtered_df_inv,
+        "Inverters",
+        'Manufacturer Name',
+        'Weighted Efficiency (%)',
+        'Maximum Continuous Output Power at Unity Power Factor ((kW))'
+    )
+
+# Add equipment comparison functionality to each tab
+def display_comparison(filtered_df, equipment_type, id_column):
+    st.subheader(f"{equipment_type} Comparison")
+    st.markdown(f"Select {equipment_type.lower()} to compare their specifications side by side.")
+    
+    # Get list of equipment
+    equipment_list = filtered_df[id_column].tolist()
+    if len(equipment_list) > 1:
+        selected_equipment = st.multiselect(
+            f"Select {equipment_type.lower()} to compare",
+            equipment_list,
+            max_selections=3,
+            key=f"compare_{equipment_type}"
+        )
+        
+        if selected_equipment:
+            comparison_df = filtered_df[filtered_df[id_column].isin(selected_equipment)]
+            
+            # Transpose the dataframe for side-by-side comparison
+            comparison_df = comparison_df.set_index(id_column).T
+            
+            st.dataframe(comparison_df, use_container_width=True)
+    else:
+        st.info(f"Apply filters to see more {equipment_type.lower()} for comparison.")
+
+# Update the tab content to include comparisons
+with tab1:
+    # Add comparison section for PV Modules
+    display_comparison(filtered_df_pv, "PV Modules", 'module_id')
+
+with tab2:
+    # Add comparison section for Inverters
+    display_comparison(filtered_df_inv, "Inverters", 'inverter_id')
+
+# Footer
+st.markdown("---")
+st.markdown("Data source: California Energy Commission")
+st.markdown(f"Last updated: {datetime.now().strftime('%Y-%m-%d')}")

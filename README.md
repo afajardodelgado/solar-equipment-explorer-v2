@@ -1,19 +1,26 @@
-# PV Module Explorer
+# Solar Equipment Explorer
 
-A data processing and visualization tool for exploring photovoltaic (PV) module data from the California Energy Commission.
+A data processing and visualization tool for exploring photovoltaic (PV) modules and inverters data from the California Energy Commission.
 
 ## Features
 
-- **Data Acquisition**: Automatically downloads PV module data from the California Energy Commission
-- **Database Storage**: Stores data in an SQLite database with proper schema and primary keys
-- **Data Exploration**: Interactive UI for filtering and exploring module specifications
-- **Visualization**: Charts and comparisons to analyze module performance
+- **Data Acquisition**: Automatically downloads PV module and inverter data from the California Energy Commission
+- **Database Storage**: Stores data in SQLite databases with proper schema and primary keys
+- **Data Exploration**: Interactive UIs for filtering and exploring equipment specifications
+- **Visualization**: Charts and comparisons to analyze equipment performance
 - **Export Capabilities**: Export filtered data to CSV for further analysis
 
 ## Components
 
-- `pv_module_downloader.py`: Downloads and processes the Excel file, storing data in SQLite
-- `pv_explorer.py`: Streamlit-based UI for exploring and visualizing the data
+### PV Modules
+- `modules/pv_module_downloader.py`: Downloads and processes the PV module Excel file, storing data in SQLite
+- `modules/pv_explorer.py`: Streamlit-based UI for exploring and visualizing PV module data
+
+### Inverters
+- `inverters/inverter_downloader.py`: Downloads and processes the inverter Excel file, storing data in SQLite
+- `inverters/inverter_explorer.py`: Streamlit-based UI for exploring and visualizing inverter data
+
+### Utilities
 - `list_db_columns.py`: Utility script to view database schema
 - `export_with_dates.py`: Exports data with properly formatted dates
 
@@ -27,14 +34,16 @@ A data processing and visualization tool for exploring photovoltaic (PV) module 
 
 ## Usage
 
-1. Download and update the database:
+1. Download and update the databases:
    ```
-   python pv_module_downloader.py
+   python modules/pv_module_downloader.py  # For PV modules
+   python inverters/inverter_downloader.py  # For inverters
    ```
 
-2. Launch the exploration UI:
+2. Launch the exploration UIs:
    ```
-   streamlit run pv_explorer.py
+   streamlit run modules/pv_explorer.py     # For PV modules
+   streamlit run inverters/inverter_explorer.py  # For inverters
    ```
 
 3. View database schema:
