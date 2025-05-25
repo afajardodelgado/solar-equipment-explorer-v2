@@ -79,6 +79,12 @@ if not table_exists or not module_id_exists:
     create_table_query = f'CREATE TABLE IF NOT EXISTS pv_modules ({columns_str});'
     cursor.execute(create_table_query)
     
+    # Handle NaT values and Timestamp objects in the dataframe before insertion
+    for col in df.columns:
+        df[col] = df[col].apply(lambda x: None if pd.isna(x) or str(x) == 'NaT' 
+                              else x.strftime('%Y-%m-%d %H:%M:%S') if isinstance(x, pd.Timestamp) 
+                              else x)
+    
     # Insert all data - use try/except to handle any integrity errors
     try:
         # First try with if_exists='append'
@@ -135,7 +141,15 @@ else:
         for col in df.columns:
             if col != 'module_id':
                 update_parts.append(f'"{col}" = ?')
-                params.append(row[col])
+                # Handle NaT values and Timestamp objects
+                value = row[col]
+                if pd.isna(value) or str(value) == 'NaT':
+                    params.append(None)
+                elif isinstance(value, pd.Timestamp):
+                    # Convert Timestamp to string format
+                    params.append(value.strftime('%Y-%m-%d %H:%M:%S'))
+                else:
+                    params.append(value)
         
         update_query = f'UPDATE pv_modules SET {", ".join(update_parts)} WHERE module_id = ?'
         params.append(module_id)
