@@ -231,9 +231,11 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     
     # Add equipment-specific columns to defaults
     if equipment_type == "PV Modules":
-        default_columns.extend(['PTC Efficiency (%)', 'Power Rating (W)', 'Date Added to Tool'])
+        # Set specific default columns for PV Modules
+        default_columns = ['module_id', 'Manufacturer', 'Model Number', 'CEC Listing Date', 'Technology', 'Nameplate Pmax (W)']
     else:  # Inverters
-        default_columns.extend(['Weighted Efficiency (%)', 'Maximum Continuous Output Power at Unity Power Factor ((kW))', 'Date Added to Tool'])
+        # Set specific default columns for Inverters
+        default_columns = ['inverter_id', 'Manufacturer Name', 'Model Number1', 'Grid Support Listing Date', 'Description']
     
     # Keep only columns that exist in the dataframe
     default_columns = [col for col in default_columns if col in all_columns]
