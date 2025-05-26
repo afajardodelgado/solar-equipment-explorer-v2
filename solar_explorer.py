@@ -219,31 +219,33 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     ), unsafe_allow_html=True)
     
     # Display filtered data
-    st.subheader(f"Filtered {equipment_type}")
+    st.subheader(f"{equipment_type}")
     st.write(f"Showing {len(df)} items")
     
-    # Sidebar for filtering
-    with st.sidebar:
-        st.header("Filters")
-        
-        # Filter by manufacturer
-        manufacturers = ["All"] + sorted(df[manufacturer_column].unique().tolist())
-        selected_manufacturer = st.selectbox("Manufacturer", manufacturers)
-        
-        # Filter by efficiency if available
-        if efficiency_column in df.columns:
-            try:
-                min_efficiency = float(df[efficiency_column].min())
-                max_efficiency = float(df[efficiency_column].max())
-                efficiency_range = st.slider(
-                    f"Efficiency (%)",
-                    min_efficiency,
-                    max_efficiency,
-                    (min_efficiency, max_efficiency)
-                )
-            except (ValueError, TypeError):
-                st.warning(f"Cannot filter by {efficiency_column} due to data type issues.")
-                efficiency_column = None
+    # Create a row with two columns - one for the filters button and one empty
+    filter_col1, filter_col2 = st.columns([1, 3])
+    
+    # Add a filters button in the first column
+    with filter_col1:
+        with st.expander("Add Filters Here"):
+            # Filter by manufacturer
+            manufacturers = ["All"] + sorted(df[manufacturer_column].unique().tolist())
+            selected_manufacturer = st.selectbox("Manufacturer", manufacturers)
+            
+            # Filter by efficiency if available
+            if efficiency_column in df.columns:
+                try:
+                    min_efficiency = float(df[efficiency_column].min())
+                    max_efficiency = float(df[efficiency_column].max())
+                    efficiency_range = st.slider(
+                        f"Efficiency (%)",
+                        min_efficiency,
+                        max_efficiency,
+                        (min_efficiency, max_efficiency)
+                    )
+                except (ValueError, TypeError):
+                    st.warning(f"Cannot filter by {efficiency_column} due to data type issues.")
+                    efficiency_column = None
     
     # Apply filters
     filtered_df = df.copy()
