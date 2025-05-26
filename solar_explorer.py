@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import plotly.express as px
+import subprocess
+import os
 from datetime import datetime
 
 # Set page configuration
@@ -157,6 +159,47 @@ def load_inverter_data():
 # Create tabs for equipment types
 tab1, tab2 = st.tabs(["PV Modules", "Grid Support Inverter List"])
 
+# Function to run the appropriate downloader script based on equipment type
+def run_downloader(equipment_type):
+    try:
+        # Determine which script to run based on equipment type
+        if equipment_type == "PV Modules":
+            script_path = "pv_module_downloader.py"
+        elif equipment_type == "Grid Support Inverter List":
+            # Check if the inverter_downloader.py is in the inverters directory
+            if os.path.exists("inverters/inverter_downloader.py"):
+                script_path = "inverters/inverter_downloader.py"
+            else:
+                script_path = "inverter_downloader.py"
+        else:
+            st.error(f"Unknown equipment type: {equipment_type}")
+            return False
+        
+        # Check if the script exists
+        if not os.path.exists(script_path):
+            st.error(f"Downloader script not found: {script_path}")
+            return False
+        
+        # Use a spinner while downloading data
+        with st.spinner(f"Downloading latest {equipment_type} data..."):
+            # Run the script using subprocess
+            result = subprocess.run(["python", script_path], 
+                                  capture_output=True, 
+                                  text=True, 
+                                  check=False)
+            
+            if result.returncode == 0:
+                st.success(f"Successfully updated {equipment_type} database.")
+                # Clear cache to force reload of data
+                st.cache_data.clear()
+                return True
+            else:
+                st.error(f"Error updating {equipment_type} database: {result.stderr}")
+                return False
+    except Exception as e:
+        st.error(f"Error running downloader: {str(e)}")
+        return False
+
 # Function to display equipment data with consistent formatting
 def display_equipment_data(equipment_type, df, id_column, manufacturer_column, model_column, efficiency_column, power_column):
     
@@ -281,9 +324,13 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
         _, right_col = st.columns([39, 1])
         with right_col:
             # Use a simple circular refresh icon
-            if st.button("⟳", key=f"refresh_button_{equipment_type}", help="Refresh data"):
-                st.cache_data.clear()
-                st.experimental_rerun()
+            if st.button("⟳", key=f"refresh_button_{equipment_type}", help="Download latest data and refresh"):
+                # Run the appropriate downloader script
+                success = run_downloader(equipment_type)
+                if success:
+                    # Clear cache and reload the app
+                    st.cache_data.clear()
+                    st.experimental_rerun()
     
     st.write(f"Showing {len(df)} items")
     
