@@ -190,8 +190,25 @@ def load_battery_data():
     
     return df
 
+# Function to load meter data
+@st.cache_data
+def load_meter_data():
+    with sqlite3.connect('meters.db') as conn:
+        query = "SELECT * FROM meters"
+        df = pd.read_sql_query(query, conn)
+    
+    # Handle date columns - they're already stored as strings in the database
+    date_columns = ['Date Added to Tool', 'Last Update', 'Meter Listing Date']
+    for col in date_columns:
+        if col in df.columns:
+            # Vectorized operation instead of apply
+            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
+            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
+    
+    return df
+
 # Create tabs for equipment types
-tab1, tab2, tab3, tab4 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems", "Batteries"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems", "Batteries", "Meters"])
 
 # Function to run the appropriate downloader script based on equipment type
 def run_downloader(equipment_type):
@@ -217,6 +234,12 @@ def run_downloader(equipment_type):
                 script_path = "batteries/battery_downloader.py"
             else:
                 script_path = "battery_downloader.py"
+        elif equipment_type == "Meters":
+            # Check if the meter_downloader.py is in the meters directory
+            if os.path.exists("meters/meter_downloader.py"):
+                script_path = "meters/meter_downloader.py"
+            else:
+                script_path = "meter_downloader.py"
         else:
             st.error(f"Unknown equipment type: {equipment_type}")
             return False
@@ -507,6 +530,31 @@ with tab4:
                 if success:
                     st.experimental_rerun()
 
+# Meters Tab
+with tab5:
+    # Load Meters data
+    with st.spinner("Loading Meters data..."):
+        try:
+            df_meter = load_meter_data()
+            filtered_df_meter = display_equipment_data(
+                "Meters",
+                df_meter,
+                'meter_id',
+                'Manufacturer',
+                'Model Number',
+                'Accuracy (%)',
+                'Meter Type'
+            )
+        except Exception as e:
+            st.error(f"Error loading meter data: {e}")
+            st.info("To download Meters data, click the refresh button in the top right corner.")
+            
+            # Add a button to run the downloader script directly if no data is available
+            if st.button("Download Meters Data"):
+                success = run_downloader("Meters")
+                if success:
+                    st.experimental_rerun()
+
 # Add visualization section to each tab
 def display_visualizations(filtered_df, equipment_type, manufacturer_column, efficiency_column, power_column):
     st.subheader("Data Visualization")
@@ -680,6 +728,16 @@ with tab4:
         'Capacity (kWh)'
     )
 
+with tab5:
+    # Add visualization section for Meters
+    display_visualizations(
+        filtered_df_meter,
+        "Meters",
+        'Manufacturer',
+        'Accuracy (%)',
+        'Meter Type'
+    )
+
 # Add equipment comparison functionality to each tab
 def display_comparison(filtered_df, equipment_type, id_column):
     st.subheader(f"{equipment_type} Comparison")
@@ -721,6 +779,10 @@ with tab3:
 with tab4:
     # Add comparison section for Batteries
     display_comparison(filtered_df_battery, "Batteries", 'battery_id')
+
+with tab5:
+    # Add comparison section for Meters
+    display_comparison(filtered_df_meter, "Meters", 'meter_id')
 
 # Footer
 st.markdown("---")
