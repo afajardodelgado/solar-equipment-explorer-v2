@@ -80,12 +80,37 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Add custom CSS to make the search bar narrower
+# Add custom CSS to make the search bar narrower and style the refresh button
 st.markdown("""
 <style>
     /* Make the search input narrower */
     [data-testid="stTextInput"] {
         max-width: 250px;
+    }
+    
+    /* Style the refresh button to look like the screenshot */
+    [data-testid="stButton"] button {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        border: 1px solid #e0e0e0;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        font-size: 14px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
+        box-shadow: none;
+    }
+    
+    /* Hover effect for refresh button */
+    [data-testid="stButton"] button:hover {
+        background-color: #f0f0f0;
+        border-color: #d0d0d0;
+        color: #495057;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -93,11 +118,6 @@ st.markdown("""
 # Title and description
 st.title("☀️ Solar Equipment Explorer")
 st.markdown("A minimalist interface for exploring solar equipment data from the California Energy Commission.")
-
-# Add a refresh button to clear the cache and reload data
-if st.button("🔄 Refresh Data"):
-    st.cache_data.clear()
-    st.experimental_rerun()
 
 
 # Function to load PV module data
@@ -253,6 +273,17 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
                 except Exception as e:
                     st.error(f"Search error: {e}. Showing all items instead.")
                     # Keep df as is if there's an error
+        
+    # Add a simple refresh button aligned far right
+    refresh_container = st.container()
+    with refresh_container:
+        # Use a very uneven column split to push the button far right
+        _, right_col = st.columns([39, 1])
+        with right_col:
+            # Use a simple circular refresh icon
+            if st.button("⟳", key=f"refresh_button_{equipment_type}", help="Refresh data"):
+                st.cache_data.clear()
+                st.experimental_rerun()
     
     st.write(f"Showing {len(df)} items")
     
