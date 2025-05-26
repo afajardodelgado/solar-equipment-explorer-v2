@@ -90,23 +90,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Create a layout with title on left and search bar on right
-col1, col2 = st.columns([3, 1])
+# Title and description
+st.title("☀️ Solar Equipment Explorer")
+st.markdown("A minimalist interface for exploring solar equipment data from the California Energy Commission.")
 
-# Title and description in the left column
-with col1:
-    st.title("☀️ Solar Equipment Explorer")
-    st.markdown("A minimalist interface for exploring solar equipment data from the California Energy Commission.")
-    
-    # Add a refresh button to clear the cache and reload data
-    if st.button("🔄 Refresh Data"):
-        st.cache_data.clear()
-        st.experimental_rerun()
-
-# Global search bar in the right column with reduced width
-with col2:
-    st.write("")
-    search_query = st.text_input("Search by Manufacturer or Model Number: ", "", placeholder="")
+# Add a refresh button to clear the cache and reload data
+if st.button("🔄 Refresh Data"):
+    st.cache_data.clear()
+    st.experimental_rerun()
 
 
 # Function to load PV module data
@@ -148,21 +139,6 @@ tab1, tab2 = st.tabs(["PV Modules", "Grid Support Inverter List"])
 
 # Function to display equipment data with consistent formatting
 def display_equipment_data(equipment_type, df, id_column, manufacturer_column, model_column, efficiency_column, power_column):
-    # Apply global search if provided
-    if search_query:
-        try:
-            # Handle potential errors in string operations
-            search_results = df[df[manufacturer_column].astype(str).str.contains(search_query, case=False, na=False) | 
-                              df[model_column].astype(str).str.contains(search_query, case=False, na=False)]
-            
-            # Only update df if we found results
-            if not search_results.empty:
-                df = search_results
-            else:
-                st.warning(f"No items found matching '{search_query}'. Showing all items instead.")
-        except Exception as e:
-            st.error(f"Search error: {e}. Showing all items instead.")
-            # Keep df as is if there's an error
     
     # Display statistics in a consistent format
     # Determine which date column to use based on equipment type
@@ -220,17 +196,20 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     
     # Display filtered data
     st.subheader(f"{equipment_type}")
-    st.write(f"Showing {len(df)} items")
     
-    # Create a row with two columns - one for the filters button and one empty
-    filter_col1, filter_col2 = st.columns([1, 3])
+    # Create a row with two columns - one for filters on the left and search on the right
+    filter_col, search_col = st.columns([1, 1])
     
-    # Add a filters button in the first column
-    with filter_col1:
+    # Add a filters button in the left column
+    with filter_col:
         with st.expander("Add Filters Here"):
             # Filter by manufacturer
             manufacturers = ["All"] + sorted(df[manufacturer_column].unique().tolist())
-            selected_manufacturer = st.selectbox("Manufacturer", manufacturers)
+            selected_manufacturer = st.selectbox(
+                "Manufacturer", 
+                manufacturers,
+                key=f"manufacturer_select_{equipment_type}"
+            )
             
             # Filter by efficiency if available
             if efficiency_column in df.columns:
@@ -241,11 +220,41 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
                         f"Efficiency (%)",
                         min_efficiency,
                         max_efficiency,
-                        (min_efficiency, max_efficiency)
+                        (min_efficiency, max_efficiency),
+                        key=f"efficiency_slider_{equipment_type}"
                     )
                 except (ValueError, TypeError):
                     st.warning(f"Cannot filter by {efficiency_column} due to data type issues.")
                     efficiency_column = None
+    
+    # Add a search bar in the right column
+    with search_col:
+        with st.expander("Add Search Here"):
+            tab_search_query = st.text_input(
+                f"Search {equipment_type} by {manufacturer_column} or {model_column}", 
+                "", 
+                placeholder="Enter search term...",
+                key=f"search_{equipment_type}"
+            )
+            
+            # Apply search if provided
+            if tab_search_query:
+                try:
+                    # Handle potential errors in string operations
+                    search_results = df[df[manufacturer_column].astype(str).str.contains(tab_search_query, case=False, na=False) | 
+                                      df[model_column].astype(str).str.contains(tab_search_query, case=False, na=False)]
+                    
+                    # Only update df if we found results
+                    if not search_results.empty:
+                        df = search_results
+                        st.success(f"Found {len(df)} items matching '{tab_search_query}'")
+                    else:
+                        st.warning(f"No items found matching '{tab_search_query}'. Showing all items instead.")
+                except Exception as e:
+                    st.error(f"Search error: {e}. Showing all items instead.")
+                    # Keep df as is if there's an error
+    
+    st.write(f"Showing {len(df)} items")
     
     # Apply filters
     filtered_df = df.copy()
