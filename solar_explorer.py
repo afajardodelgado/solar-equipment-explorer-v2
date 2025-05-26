@@ -173,8 +173,25 @@ def load_energy_storage_data():
     
     return df
 
+# Function to load battery data
+@st.cache_data
+def load_battery_data():
+    with sqlite3.connect('batteries.db') as conn:
+        query = "SELECT * FROM batteries"
+        df = pd.read_sql_query(query, conn)
+    
+    # Handle date columns - they're already stored as strings in the database
+    date_columns = ['Date Added to Tool', 'Last Update', 'Battery Listing Date']
+    for col in date_columns:
+        if col in df.columns:
+            # Vectorized operation instead of apply
+            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
+            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
+    
+    return df
+
 # Create tabs for equipment types
-tab1, tab2, tab3 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems"])
+tab1, tab2, tab3, tab4 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems", "Batteries"])
 
 # Function to run the appropriate downloader script based on equipment type
 def run_downloader(equipment_type):
@@ -194,6 +211,12 @@ def run_downloader(equipment_type):
                 script_path = "storage/energy_storage_downloader.py"
             else:
                 script_path = "energy_storage_downloader.py"
+        elif equipment_type == "Batteries":
+            # Check if the battery_downloader.py is in the batteries directory
+            if os.path.exists("batteries/battery_downloader.py"):
+                script_path = "batteries/battery_downloader.py"
+            else:
+                script_path = "battery_downloader.py"
         else:
             st.error(f"Unknown equipment type: {equipment_type}")
             return False
@@ -459,6 +482,31 @@ with tab3:
                 if success:
                     st.experimental_rerun()
 
+# Batteries Tab
+with tab4:
+    # Load Batteries data
+    with st.spinner("Loading Batteries data..."):
+        try:
+            df_battery = load_battery_data()
+            filtered_df_battery = display_equipment_data(
+                "Batteries",
+                df_battery,
+                'battery_id',
+                'Manufacturer',
+                'Model Number',
+                'Round Trip Efficiency (%)',
+                'Continuous Power Rating (kW)'
+            )
+        except Exception as e:
+            st.error(f"Error loading battery data: {e}")
+            st.info("To download Batteries data, click the refresh button in the top right corner.")
+            
+            # Add a button to run the downloader script directly if no data is available
+            if st.button("Download Batteries Data"):
+                success = run_downloader("Batteries")
+                if success:
+                    st.experimental_rerun()
+
 # Add visualization section to each tab
 def display_visualizations(filtered_df, equipment_type, manufacturer_column, efficiency_column, power_column):
     st.subheader("Data Visualization")
@@ -612,6 +660,26 @@ with tab2:
         'Maximum Continuous Output Power at Unity Power Factor ((kW))'
     )
 
+with tab3:
+    # Add visualization section for Energy Storage Systems
+    display_visualizations(
+        filtered_df_storage,
+        "Energy Storage Systems",
+        'Manufacturer',
+        'Round Trip Efficiency (%)',
+        'Continuous Power Rating (kW)'
+    )
+
+with tab4:
+    # Add visualization section for Batteries
+    display_visualizations(
+        filtered_df_battery,
+        "Batteries",
+        'Manufacturer',
+        'Round Trip Efficiency (%)',
+        'Capacity (kWh)'
+    )
+
 # Add equipment comparison functionality to each tab
 def display_comparison(filtered_df, equipment_type, id_column):
     st.subheader(f"{equipment_type} Comparison")
@@ -645,6 +713,14 @@ with tab1:
 with tab2:
     # Add comparison section for Grid Support Inverter List
     display_comparison(filtered_df_inv, "Grid Support Inverter List", 'inverter_id')
+
+with tab3:
+    # Add comparison section for Energy Storage Systems
+    display_comparison(filtered_df_storage, "Energy Storage Systems", 'storage_id')
+
+with tab4:
+    # Add comparison section for Batteries
+    display_comparison(filtered_df_battery, "Batteries", 'battery_id')
 
 # Footer
 st.markdown("---")
