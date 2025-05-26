@@ -156,8 +156,25 @@ def load_inverter_data():
     
     return df
 
+# Function to load energy storage data
+@st.cache_data
+def load_energy_storage_data():
+    with sqlite3.connect('energy_storage.db') as conn:
+        query = "SELECT * FROM energy_storage"
+        df = pd.read_sql_query(query, conn)
+    
+    # Handle date columns - they're already stored as strings in the database
+    date_columns = ['Date Added to Tool', 'Last Update', 'Energy Storage Listing Date']
+    for col in date_columns:
+        if col in df.columns:
+            # Vectorized operation instead of apply
+            mask = df[col].notna() & df[col].astype(str).str.len().gt(10)
+            df.loc[mask, col] = df.loc[mask, col].astype(str).str[:10]
+    
+    return df
+
 # Create tabs for equipment types
-tab1, tab2 = st.tabs(["PV Modules", "Grid Support Inverter List"])
+tab1, tab2, tab3 = st.tabs(["PV Modules", "Grid Support Inverter List", "Energy Storage Systems"])
 
 # Function to run the appropriate downloader script based on equipment type
 def run_downloader(equipment_type):
@@ -171,6 +188,12 @@ def run_downloader(equipment_type):
                 script_path = "inverters/inverter_downloader.py"
             else:
                 script_path = "inverter_downloader.py"
+        elif equipment_type == "Energy Storage Systems":
+            # Check if the energy_storage_downloader.py is in the storage directory
+            if os.path.exists("storage/energy_storage_downloader.py"):
+                script_path = "storage/energy_storage_downloader.py"
+            else:
+                script_path = "energy_storage_downloader.py"
         else:
             st.error(f"Unknown equipment type: {equipment_type}")
             return False
@@ -395,18 +418,46 @@ with tab1:
 
 # Grid Support Inverter List Tab
 with tab2:
-    # Load inverter data
+    # Load Grid Support Inverter data
     with st.spinner("Loading Grid Support Inverter List data..."):
-        df_inv = load_inverter_data()
-        filtered_df_inv = display_equipment_data(
-            "Grid Support Inverter List",
-            df_inv,
-            'inverter_id',
-            'Manufacturer Name',
-            'Model Number1',
-            'Weighted Efficiency (%)',
-            'Maximum Continuous Output Power at Unity Power Factor ((kW))'
-        )
+        try:
+            df_inv = load_inverter_data()
+            filtered_df_inv = display_equipment_data(
+                "Grid Support Inverter List",
+                df_inv,
+                'inverter_id',
+                'Manufacturer Name',
+                'Model Number1',
+                'CEC Weighted Efficiency (%)',
+                'Rated Output Power (kW)'
+            )
+        except Exception as e:
+            st.error(f"Error loading inverter data: {e}")
+
+# Energy Storage Systems Tab
+with tab3:
+    # Load Energy Storage Systems data
+    with st.spinner("Loading Energy Storage Systems data..."):
+        try:
+            df_storage = load_energy_storage_data()
+            filtered_df_storage = display_equipment_data(
+                "Energy Storage Systems",
+                df_storage,
+                'storage_id',
+                'Manufacturer',
+                'Model Number',
+                'Round Trip Efficiency (%)',
+                'Continuous Power Rating (kW)'
+            )
+        except Exception as e:
+            st.error(f"Error loading energy storage data: {e}")
+            st.info("To download Energy Storage Systems data, click the refresh button in the top right corner.")
+            
+            # Add a button to run the downloader script directly if no data is available
+            if st.button("Download Energy Storage Data"):
+                success = run_downloader("Energy Storage Systems")
+                if success:
+                    st.experimental_rerun()
 
 # Add visualization section to each tab
 def display_visualizations(filtered_df, equipment_type, manufacturer_column, efficiency_column, power_column):
