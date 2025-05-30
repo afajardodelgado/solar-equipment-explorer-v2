@@ -164,7 +164,7 @@ def load_energy_storage_data():
         df = pd.read_sql_query(query, conn)
     
     # Handle date columns - they're already stored as strings in the database
-    date_columns = ['Date Added to Tool', 'Last Update', 'Energy Storage Listing Date']
+    date_columns = ['Date Added to Tool', 'Last Update', 'Energy Storage Listing Date', 'Certificate Date']
     for col in date_columns:
         if col in df.columns:
             # Vectorized operation instead of apply
@@ -451,7 +451,7 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
         default_columns = ['inverter_id', 'Manufacturer Name', 'Model Number1', 'Grid Support Listing Date', 'Description']
     elif equipment_type == "Energy Storage Systems":
         # Set specific default columns for Energy Storage Systems
-        default_columns = ['storage_id', 'Manufacturer', 'Model Number', 'Energy Storage Listing Date', 'Chemistry', 'Capacity (kWh)', 'Continuous Power Rating (kW)']
+        default_columns = ['storage_id', 'Manufacturer', 'Model Number', 'Energy Storage Listing Date', 'Chemistry', 'Description', 'PV DC Input Capability', 'Capacity (kWh)', 'Continuous Power Rating (kW)', 'Maximum Discharge Rate (kW)', 'Voltage (Vac)', 'Certifying Entity', 'Certificate Date']
     elif equipment_type == "Batteries":
         # Set specific default columns for Batteries
         default_columns = ['battery_id', 'Manufacturer', 'Model Number', 'Battery Listing Date', 'Chemistry', 'Description', 'Capacity (kWh)', 'Discharge Rate (kW)', 'Round Trip Efficiency (%)', 'Certifying Entity', 'Certificate Date']
@@ -522,7 +522,7 @@ with tab3:
                 'Manufacturer',
                 'Model Number',
                 'Round Trip Efficiency (%)',
-                'Continuous Power Rating (kW)'
+                'Maximum Discharge Rate (kW)'
             )
         except Exception as e:
             st.error(f"Error loading energy storage data: {e}")
@@ -743,8 +743,8 @@ with tab3:
         filtered_df_storage,
         "Energy Storage Systems",
         'Manufacturer',
-        'Round Trip Efficiency (%)',
-        'Continuous Power Rating (kW)'
+        'Chemistry',
+        'Maximum Discharge Rate (kW)'
     )
 
 with tab4:
