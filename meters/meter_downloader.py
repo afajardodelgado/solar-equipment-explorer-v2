@@ -36,73 +36,30 @@ current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 # Create a new DataFrame with only the columns we need
 new_df = pd.DataFrame()
 
-# Map the columns from the original DataFrame to our standardized names
-# We'll adjust these based on the actual column names in the data
 try:
-    # Try to find the manufacturer column
-    manufacturer_col = None
-    for col in df.columns:
-        if 'Manufacturer' in col or 'manufacturer' in col:
-            manufacturer_col = col
-            break
+    # Map columns according to the Excel structure provided by the user
+    # Column A: Manufacturer Name
+    new_df['Manufacturer'] = df.iloc[:, 0]
     
-    if manufacturer_col:
-        new_df['Manufacturer'] = df[manufacturer_col]
-    else:
-        new_df['Manufacturer'] = df.iloc[:, 0]  # Assume first column is manufacturer
-        print("Using first column as Manufacturer")
+    # Column B: Model Number
+    new_df['Model Number'] = df.iloc[:, 1]
     
-    # Try to find the model number column
-    model_col = None
-    for col in df.columns:
-        if 'Model' in col or 'model' in col:
-            model_col = col
-            break
+    # Column C: Display Type
+    new_df['Display Type'] = df.iloc[:, 2]
     
-    if model_col:
-        new_df['Model Number'] = df[model_col]
-    else:
-        new_df['Model Number'] = df.iloc[:, 1]  # Assume second column is model number
-        print("Using second column as Model Number")
+    # Column D: PBI Meter
+    new_df['PBI Meter'] = df.iloc[:, 3]
     
-    # Try to find the meter type column
-    meter_type_col = None
-    for col in df.columns:
-        if 'Type' in col or 'type' in col:
-            meter_type_col = col
-            break
+    # Column E: Note
+    new_df['Note'] = df.iloc[:, 4]
     
-    if meter_type_col:
-        new_df['Meter Type'] = df[meter_type_col]
-    else:
-        new_df['Meter Type'] = 'Unknown'
-        print("Meter Type column not found")
+    # Column I: CEC Listing Date - Convert Unix timestamp to yyyy-mm-dd
+    new_df['Meter Listing Date'] = df.iloc[:, 8].apply(lambda x: 
+        datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') if pd.notna(x) and str(x).isdigit() else x)
     
-    # Try to find the accuracy column
-    accuracy_col = None
-    for col in df.columns:
-        if 'Accuracy' in col or 'accuracy' in col:
-            accuracy_col = col
-            break
-    
-    if accuracy_col:
-        new_df['Accuracy (%)'] = df[accuracy_col]
-    else:
-        new_df['Accuracy (%)'] = 'Unknown'
-        print("Accuracy column not found")
-    
-    # Try to find the listing date column
-    listing_date_col = None
-    for col in df.columns:
-        if 'Listing Date' in col or 'listing date' in col or 'CEC Listing' in col:
-            listing_date_col = col
-            break
-    
-    if listing_date_col:
-        new_df['Meter Listing Date'] = df[listing_date_col]
-    else:
-        new_df['Meter Listing Date'] = None
-        print("Listing Date column not found")
+    # Column J: Last Update - Convert Unix timestamp to yyyy-mm-dd
+    new_df['Last Update'] = df.iloc[:, 9].apply(lambda x: 
+        datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') if pd.notna(x) and str(x).isdigit() else x)
     
     # Add the Date Added to Tool column
     new_df['Date Added to Tool'] = current_time
@@ -122,11 +79,18 @@ except Exception as e:
     print(f"Error mapping columns: {e}")
     # If we encounter an error, we'll create a minimal DataFrame with just the essential columns
     new_df = pd.DataFrame()
-    new_df['Manufacturer'] = df.iloc[:, 0]  # First column as manufacturer
-    new_df['Model Number'] = df.iloc[:, 1]  # Second column as model number
-    new_df['Meter Type'] = 'Unknown'
-    new_df['Accuracy (%)'] = 'Unknown'
-    new_df['Meter Listing Date'] = None
+    new_df['Manufacturer'] = df.iloc[:, 0]  # Column A: Manufacturer Name
+    new_df['Model Number'] = df.iloc[:, 1]  # Column B: Model Number
+    new_df['Display Type'] = df.iloc[:, 2]  # Column C: Display Type
+    new_df['PBI Meter'] = df.iloc[:, 3]  # Column D: PBI Meter
+    new_df['Note'] = df.iloc[:, 4]  # Column E: Note
+    # Column I: CEC Listing Date - Convert Unix timestamp to yyyy-mm-dd
+    new_df['Meter Listing Date'] = df.iloc[:, 8].apply(lambda x: 
+        datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') if pd.notna(x) and str(x).isdigit() else x)
+    
+    # Column J: Last Update - Convert Unix timestamp to yyyy-mm-dd
+    new_df['Last Update'] = df.iloc[:, 9].apply(lambda x: 
+        datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') if pd.notna(x) and str(x).isdigit() else x)
     new_df['Date Added to Tool'] = current_time
     new_df['meter_id'] = new_df['Manufacturer'].astype(str) + '_' + new_df['Model Number'].astype(str)
     df = new_df

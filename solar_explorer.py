@@ -457,7 +457,7 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
         default_columns = ['battery_id', 'Manufacturer', 'Model Number', 'Battery Listing Date', 'Chemistry', 'Description', 'Capacity (kWh)', 'Discharge Rate (kW)', 'Round Trip Efficiency (%)', 'Certifying Entity', 'Certificate Date']
     elif equipment_type == "Meters":
         # Set specific default columns for Meters
-        default_columns = ['meter_id', 'Manufacturer', 'Model Number', 'Meter Listing Date', 'Meter Type', 'Accuracy (%)']
+        default_columns = ['meter_id', 'Manufacturer', 'Model Number', 'Meter Listing Date', 'Display Type', 'PBI Meter', 'Note']
     
     # Keep only columns that exist in the dataframe
     default_columns = [col for col in default_columns if col in all_columns]
@@ -571,8 +571,8 @@ with tab5:
                 'meter_id',
                 'Manufacturer',
                 'Model Number',
-                'Accuracy (%)',
-                'Meter Type'
+                'Display Type',
+                'PBI Meter'
             )
         except Exception as e:
             st.error(f"Error loading meter data: {e}")
@@ -763,8 +763,8 @@ with tab5:
         filtered_df_meter,
         "Meters",
         'Manufacturer',
-        'Accuracy (%)',
-        'Meter Type'
+        'Display Type',
+        'PBI Meter'
     )
 
 # Add equipment comparison functionality to each tab
