@@ -11,27 +11,18 @@ if response.status_code != 200:
     raise Exception(f"Failed to download file: {response.status_code}")
 
 # Step 2: Load the Excel file into a pandas DataFrame
-# Skip to row 11 (0-indexed, so this is the 12th row) for headers
-# And use row 12 (0-indexed, so this is the 13th row) for units
+# Skip to row 12 (0-indexed, so this is the 13th row) for headers
+# Data starts from row 13 (0-indexed, so this is the 14th row)
 excel_data = BytesIO(response.content)
-df_headers = pd.read_excel(excel_data, engine='openpyxl', header=11, nrows=1)
+df_headers = pd.read_excel(excel_data, engine='openpyxl', header=12, nrows=1)
 excel_data.seek(0)  # Reset the file pointer
-df_units = pd.read_excel(excel_data, engine='openpyxl', header=None, skiprows=12, nrows=1)
 
 # Get the actual data starting from row 13 (0-indexed, so this is the 14th row)
 excel_data.seek(0)  # Reset the file pointer
-df = pd.read_excel(excel_data, engine='openpyxl', header=11, skiprows=2)
+df = pd.read_excel(excel_data, engine='openpyxl', header=12, skiprows=1)
 
-# Combine column names with units
-column_names = []
-for i, col in enumerate(df_headers.columns):
-    unit = df_units.iloc[0, i] if i < len(df_units.columns) else ""
-    if pd.notna(unit) and str(unit).strip() != "":
-        column_names.append(f"{col} ({unit})")
-    else:
-        column_names.append(col)
-
-df.columns = column_names
+# Use the header names as is
+df.columns = df_headers.columns
 
 # Print column names to debug
 print("Available columns:")
@@ -52,83 +43,39 @@ new_df = pd.DataFrame()
 # Map the columns from the original DataFrame to our standardized names
 # We'll adjust these based on the actual column names in the data
 try:
-    # Try to find the manufacturer column
-    manufacturer_col = None
-    for col in df.columns:
-        if 'Manufacturer' in col or 'manufacturer' in col:
-            manufacturer_col = col
-            break
+    # Map columns according to the Excel structure provided by the user
+    # Excel column A: Manufacturer Name
+    new_df['Manufacturer'] = df.iloc[:, 0]
     
-    if manufacturer_col:
-        new_df['Manufacturer'] = df[manufacturer_col]
-    else:
-        new_df['Manufacturer'] = df.iloc[:, 0]  # Assume first column is manufacturer
-        print("Using first column as Manufacturer")
+    # Excel Column C: Model Number
+    new_df['Model Number'] = df.iloc[:, 2]
     
-    # Try to find the model number column
-    model_col = None
-    for col in df.columns:
-        if 'Model' in col or 'model' in col:
-            model_col = col
-            break
+    # Excel Column D: Technology
+    new_df['Chemistry'] = df.iloc[:, 3]
     
-    if model_col:
-        new_df['Model Number'] = df[model_col]
-    else:
-        new_df['Model Number'] = df.iloc[:, 1]  # Assume second column is model number
-        print("Using second column as Model Number")
+    # Excel Column E: Description
+    new_df['Description'] = df.iloc[:, 4]
     
-    # Try to find the chemistry column
-    chemistry_col = None
-    for col in df.columns:
-        if 'Chemistry' in col or 'chemistry' in col or 'Technology' in col:
-            chemistry_col = col
-            break
+    # Excel Column F: Certifying Entity
+    new_df['Certifying Entity'] = df.iloc[:, 5]
     
-    if chemistry_col:
-        new_df['Chemistry'] = df[chemistry_col]
-    else:
-        new_df['Chemistry'] = 'Unknown'
-        print("Chemistry column not found")
+    # Excel Column G: Certificate Date
+    new_df['Certificate Date'] = df.iloc[:, 6]
     
-    # Try to find the capacity column
-    capacity_col = None
-    for col in df.columns:
-        if 'Capacity' in col or 'capacity' in col or 'kWh' in col:
-            capacity_col = col
-            break
+    # Excel Column I: Nameplate Energy Capacity
+    new_df['Capacity (kWh)'] = df.iloc[:, 8]
     
-    if capacity_col:
-        new_df['Capacity (kWh)'] = df[capacity_col]
-    else:
-        new_df['Capacity (kWh)'] = 'Unknown'
-        print("Capacity column not found")
+    # Excel Column J: Maximum Continuous Discharge Rate
+    new_df['Discharge Rate (kW)'] = df.iloc[:, 9]
     
-    # Try to find the voltage column
-    voltage_col = None
-    for col in df.columns:
-        if 'Voltage' in col or 'voltage' in col or 'V' in col:
-            voltage_col = col
-            break
+    # Excel Column K: Manufacturers Declared Roundtrip Efficiency
+    new_df['Round Trip Efficiency (%)'] = df.iloc[:, 10]
     
-    if voltage_col:
-        new_df['Voltage (V)'] = df[voltage_col]
-    else:
-        new_df['Voltage (V)'] = 'Unknown'
-        print("Voltage column not found")
+    # Excel Column O: CEC Listing Date
+    new_df['Battery Listing Date'] = df.iloc[:, 14]
     
-    # Try to find the listing date column
-    listing_date_col = None
-    for col in df.columns:
-        if 'Listing Date' in col or 'listing date' in col or 'CEC Listing' in col:
-            listing_date_col = col
-            break
-    
-    if listing_date_col:
-        new_df['Battery Listing Date'] = df[listing_date_col]
-    else:
-        new_df['Battery Listing Date'] = None
-        print("Listing Date column not found")
+    # Excel Column P: Last Update Date
+    new_df['Last Update'] = df.iloc[:, 15]
     
     # Add the Date Added to Tool column
     new_df['Date Added to Tool'] = current_time
@@ -149,11 +96,14 @@ except Exception as e:
     # If we encounter an error, we'll create a minimal DataFrame with just the essential columns
     new_df = pd.DataFrame()
     new_df['Manufacturer'] = df.iloc[:, 0]  # First column as manufacturer
-    new_df['Model Number'] = df.iloc[:, 1]  # Second column as model number
-    new_df['Chemistry'] = 'Unknown'
-    new_df['Capacity (kWh)'] = 'Unknown'
-    new_df['Voltage (V)'] = 'Unknown'
-    new_df['Battery Listing Date'] = None
+    new_df['Model Number'] = df.iloc[:, 2]  # Third column as model number (column C)
+    new_df['Chemistry'] = df.iloc[:, 3]  # Fourth column as chemistry (column D)
+    new_df['Description'] = df.iloc[:, 4]  # Fifth column as description (column E)
+    new_df['Capacity (kWh)'] = df.iloc[:, 8]  # Ninth column as capacity (column I)
+    new_df['Discharge Rate (kW)'] = df.iloc[:, 9]  # Tenth column as discharge rate (column J)
+    new_df['Round Trip Efficiency (%)'] = df.iloc[:, 10]  # Eleventh column as efficiency (column K)
+    new_df['Battery Listing Date'] = df.iloc[:, 14]  # Fifteenth column as listing date (column O)
+    new_df['Last Update'] = df.iloc[:, 15]  # Sixteenth column as last update (column P)
     new_df['Date Added to Tool'] = current_time
     new_df['battery_id'] = new_df['Manufacturer'].astype(str) + '_' + new_df['Model Number'].astype(str)
     df = new_df

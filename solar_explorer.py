@@ -181,7 +181,7 @@ def load_battery_data():
         df = pd.read_sql_query(query, conn)
     
     # Handle date columns - they're already stored as strings in the database
-    date_columns = ['Date Added to Tool', 'Last Update', 'Battery Listing Date']
+    date_columns = ['Date Added to Tool', 'Last Update', 'Battery Listing Date', 'Certificate Date']
     for col in date_columns:
         if col in df.columns:
             # Vectorized operation instead of apply
@@ -274,11 +274,21 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     
     # Display statistics in a consistent format
     # Determine which date column to use based on equipment type
-    date_column = 'CEC Listing Date' if equipment_type == "PV Modules" else 'Grid Support Listing Date'
+    date_column = None
+    if equipment_type == "PV Modules":
+        date_column = 'CEC Listing Date'
+    elif equipment_type == "Grid Support Inverter List":
+        date_column = 'Grid Support Listing Date'
+    elif equipment_type == "Energy Storage Systems":
+        date_column = 'Energy Storage Listing Date'
+    elif equipment_type == "Batteries":
+        date_column = 'Battery Listing Date'
+    elif equipment_type == "Meters":
+        date_column = 'Meter Listing Date'
     
     # Handle the date formatting safely
     latest_listing_date = "N/A"
-    if date_column in df.columns and not df.empty:
+    if date_column and date_column in df.columns and not df.empty:
         try:
             # Filter out None, 'None', and empty values before finding max date
             valid_dates = df[df[date_column].notna() & 
@@ -302,7 +312,17 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
             latest_listing_date = "N/A"
     
     # Format the label based on equipment type
-    date_label = "Latest CEC Listing Date" if equipment_type == "PV Modules" else "Latest Grid Support Listing Date"
+    date_label = "Latest Listing Date"
+    if equipment_type == "PV Modules":
+        date_label = "Latest CEC Listing Date"
+    elif equipment_type == "Grid Support Inverter List":
+        date_label = "Latest Grid Support Listing Date"
+    elif equipment_type == "Energy Storage Systems":
+        date_label = "Latest Energy Storage Listing Date"
+    elif equipment_type == "Batteries":
+        date_label = "Latest Battery Listing Date"
+    elif equipment_type == "Meters":
+        date_label = "Latest Meter Listing Date"
     
     st.markdown("""
     <div class="stat-container">
@@ -426,9 +446,18 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
     if equipment_type == "PV Modules":
         # Set specific default columns for PV Modules
         default_columns = ['module_id', 'Manufacturer', 'Model Number', 'CEC Listing Date', 'Technology', 'Nameplate Pmax (W)']
-    else:  # Grid Support Inverter List
+    elif equipment_type == "Grid Support Inverter List":
         # Set specific default columns for Grid Support Inverter List
         default_columns = ['inverter_id', 'Manufacturer Name', 'Model Number1', 'Grid Support Listing Date', 'Description']
+    elif equipment_type == "Energy Storage Systems":
+        # Set specific default columns for Energy Storage Systems
+        default_columns = ['storage_id', 'Manufacturer', 'Model Number', 'Energy Storage Listing Date', 'Chemistry', 'Capacity (kWh)', 'Continuous Power Rating (kW)']
+    elif equipment_type == "Batteries":
+        # Set specific default columns for Batteries
+        default_columns = ['battery_id', 'Manufacturer', 'Model Number', 'Battery Listing Date', 'Chemistry', 'Description', 'Capacity (kWh)', 'Discharge Rate (kW)', 'Round Trip Efficiency (%)', 'Certifying Entity', 'Certificate Date']
+    elif equipment_type == "Meters":
+        # Set specific default columns for Meters
+        default_columns = ['meter_id', 'Manufacturer', 'Model Number', 'Meter Listing Date', 'Meter Type', 'Accuracy (%)']
     
     # Keep only columns that exist in the dataframe
     default_columns = [col for col in default_columns if col in all_columns]
@@ -518,7 +547,7 @@ with tab4:
                 'Manufacturer',
                 'Model Number',
                 'Round Trip Efficiency (%)',
-                'Continuous Power Rating (kW)'
+                'Discharge Rate (kW)'
             )
         except Exception as e:
             st.error(f"Error loading battery data: {e}")
@@ -725,7 +754,7 @@ with tab4:
         "Batteries",
         'Manufacturer',
         'Round Trip Efficiency (%)',
-        'Capacity (kWh)'
+        'Discharge Rate (kW)'
     )
 
 with tab5:
