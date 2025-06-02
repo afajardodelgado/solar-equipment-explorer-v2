@@ -119,9 +119,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Title and description
+# Title
 st.title("☀️ Solar Equipment Explorer")
-st.markdown("A minimalist interface for exploring solar equipment data from the California Energy Commission.")
 
 # Define base directory for database files
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
