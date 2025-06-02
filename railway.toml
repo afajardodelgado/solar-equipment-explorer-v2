@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "pip install -r requirements.txt"
 
 [deploy]
-startCommand = "python setup.py && streamlit run solar_explorer.py --server.port $PORT --server.address 0.0.0.0"
+startCommand = "python setup.py && python -W ignore::RuntimeWarning start_app.py --server.port $PORT --server.address 0.0.0.0 2>/dev/null"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

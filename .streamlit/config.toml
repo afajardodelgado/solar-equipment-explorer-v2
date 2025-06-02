@@ -1,0 +1,14 @@
+[logger]
+level = "error"
+
+[client]
+showErrorDetails = false
+
+[runner]
+magicEnabled = true
+installTracer = false
+fixMatplotlib = true
+
+[server]
+enableCORS = true
+enableXsrfProtection = true
