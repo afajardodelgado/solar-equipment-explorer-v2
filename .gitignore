@@ -1,5 +1,6 @@
 # Database files
-*.db
+# Commenting out to include databases in Railway deployment
+# *.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -24,3 +25,14 @@ ENV/
 
 # CSV files (optional - remove if you want to include these)
 # *.csv
+
+# Railway specific
+.railway/
+
+# Local environment variables
+.env
+.env.local
+
+# Excel files (temporary downloads)
+*.xlsx
+*.xls

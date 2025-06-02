@@ -4,7 +4,9 @@ import sqlite3
 import plotly.express as px
 import subprocess
 import os
+import sys
 from datetime import datetime
+from pathlib import Path
 
 # Set page configuration
 st.set_page_config(
@@ -121,11 +123,18 @@ st.markdown("""
 st.title("☀️ Solar Equipment Explorer")
 st.markdown("A minimalist interface for exploring solar equipment data from the California Energy Commission.")
 
+# Define base directory for database files
+BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
+
+# Function to get database path
+def get_db_path(db_name):
+    return str(BASE_DIR / db_name)
+
 
 # Function to load PV module data
 @st.cache_data
 def load_pv_data():
-    with sqlite3.connect('pv_modules.db') as conn:
+    with sqlite3.connect(get_db_path('pv_modules.db')) as conn:
         query = "SELECT * FROM pv_modules"
         df = pd.read_sql_query(query, conn)
     
@@ -142,7 +151,7 @@ def load_pv_data():
 # Function to load inverter data
 @st.cache_data
 def load_inverter_data():
-    with sqlite3.connect('inverters.db') as conn:
+    with sqlite3.connect(get_db_path('inverters.db')) as conn:
         query = "SELECT * FROM inverters"
         df = pd.read_sql_query(query, conn)
     
@@ -159,7 +168,7 @@ def load_inverter_data():
 # Function to load energy storage data
 @st.cache_data
 def load_energy_storage_data():
-    with sqlite3.connect('energy_storage.db') as conn:
+    with sqlite3.connect(get_db_path('energy_storage.db')) as conn:
         query = "SELECT * FROM energy_storage"
         df = pd.read_sql_query(query, conn)
     
@@ -176,7 +185,7 @@ def load_energy_storage_data():
 # Function to load battery data
 @st.cache_data
 def load_battery_data():
-    with sqlite3.connect('batteries.db') as conn:
+    with sqlite3.connect(get_db_path('batteries.db')) as conn:
         query = "SELECT * FROM batteries"
         df = pd.read_sql_query(query, conn)
     
@@ -193,7 +202,7 @@ def load_battery_data():
 # Function to load meter data
 @st.cache_data
 def load_meter_data():
-    with sqlite3.connect('meters.db') as conn:
+    with sqlite3.connect(get_db_path('meters.db')) as conn:
         query = "SELECT * FROM meters"
         df = pd.read_sql_query(query, conn)
     
@@ -215,31 +224,15 @@ def run_downloader(equipment_type):
     try:
         # Determine which script to run based on equipment type
         if equipment_type == "PV Modules":
-            script_path = "pv_module_downloader.py"
+            script_path = str(BASE_DIR / "pv_module_downloader.py")
         elif equipment_type == "Grid Support Inverter List":
-            # Check if the inverter_downloader.py is in the inverters directory
-            if os.path.exists("inverters/inverter_downloader.py"):
-                script_path = "inverters/inverter_downloader.py"
-            else:
-                script_path = "inverter_downloader.py"
+            script_path = str(BASE_DIR / "inverters" / "inverter_downloader.py")
         elif equipment_type == "Energy Storage Systems":
-            # Check if the energy_storage_downloader.py is in the storage directory
-            if os.path.exists("storage/energy_storage_downloader.py"):
-                script_path = "storage/energy_storage_downloader.py"
-            else:
-                script_path = "energy_storage_downloader.py"
+            script_path = str(BASE_DIR / "storage" / "energy_storage_downloader.py")
         elif equipment_type == "Batteries":
-            # Check if the battery_downloader.py is in the batteries directory
-            if os.path.exists("batteries/battery_downloader.py"):
-                script_path = "batteries/battery_downloader.py"
-            else:
-                script_path = "battery_downloader.py"
+            script_path = str(BASE_DIR / "batteries" / "battery_downloader.py")
         elif equipment_type == "Meters":
-            # Check if the meter_downloader.py is in the meters directory
-            if os.path.exists("meters/meter_downloader.py"):
-                script_path = "meters/meter_downloader.py"
-            else:
-                script_path = "meter_downloader.py"
+            script_path = str(BASE_DIR / "meters" / "meter_downloader.py")
         else:
             st.error(f"Unknown equipment type: {equipment_type}")
             return False
@@ -251,8 +244,9 @@ def run_downloader(equipment_type):
         
         # Use a spinner while downloading data
         with st.spinner(f"Downloading latest {equipment_type} data..."):
-            # Run the script using subprocess
-            result = subprocess.run(["python", script_path], 
+            # Run the script using subprocess with the correct Python executable
+            python_executable = sys.executable
+            result = subprocess.run([python_executable, script_path], 
                                   capture_output=True, 
                                   text=True, 
                                   check=False)
@@ -264,6 +258,8 @@ def run_downloader(equipment_type):
                 return True
             else:
                 st.error(f"Error updating {equipment_type} database: {result.stderr}")
+                with st.expander("View Error Details"):
+                    st.code(result.stderr)
                 return False
     except Exception as e:
         st.error(f"Error running downloader: {str(e)}")

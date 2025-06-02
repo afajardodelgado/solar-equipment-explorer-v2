@@ -1,6 +1,6 @@
 # Solar Equipment Explorer
 
-A data processing and visualization tool for exploring photovoltaic (PV) modules and inverters data from the California Energy Commission.
+A data processing and visualization tool for exploring solar equipment data from the California Energy Commission, including PV modules, inverters, energy storage systems, batteries, and meters.
 
 ## Features
 
@@ -12,15 +12,26 @@ A data processing and visualization tool for exploring photovoltaic (PV) modules
 
 ## Components
 
+### Main Application
+- `solar_explorer.py`: Streamlit-based UI for exploring and visualizing all equipment types
+
 ### PV Modules
-- `modules/pv_module_downloader.py`: Downloads and processes the PV module Excel file, storing data in SQLite
-- `modules/pv_explorer.py`: Streamlit-based UI for exploring and visualizing PV module data
+- `pv_module_downloader.py`: Downloads and processes the PV module Excel file, storing data in SQLite
 
 ### Inverters
 - `inverters/inverter_downloader.py`: Downloads and processes the inverter Excel file, storing data in SQLite
-- `inverters/inverter_explorer.py`: Streamlit-based UI for exploring and visualizing inverter data
+
+### Energy Storage Systems
+- `storage/energy_storage_downloader.py`: Downloads and processes the energy storage systems Excel file, storing data in SQLite
+
+### Batteries
+- `batteries/battery_downloader.py`: Downloads and processes the batteries Excel file, storing data in SQLite
+
+### Meters
+- `meters/meter_downloader.py`: Downloads and processes the meters Excel file, storing data in SQLite
 
 ### Utilities
+- `setup.py`: Sets up all databases by running the downloaders
 - `list_db_columns.py`: Utility script to view database schema
 - `export_with_dates.py`: Exports data with properly formatted dates
 
@@ -36,14 +47,20 @@ A data processing and visualization tool for exploring photovoltaic (PV) modules
 
 1. Download and update the databases:
    ```
-   python modules/pv_module_downloader.py  # For PV modules
+   python pv_module_downloader.py           # For PV modules
    python inverters/inverter_downloader.py  # For inverters
+   python storage/energy_storage_downloader.py  # For energy storage systems
+   python batteries/battery_downloader.py    # For batteries
+   python meters/meter_downloader.py         # For meters
+   ```
+   Or run all downloaders at once:
+   ```
+   python setup.py
    ```
 
-2. Launch the exploration UIs:
+2. Launch the application:
    ```
-   streamlit run modules/pv_explorer.py     # For PV modules
-   streamlit run inverters/inverter_explorer.py  # For inverters
+   streamlit run solar_explorer.py
    ```
 
 3. View database schema:
@@ -51,15 +68,78 @@ A data processing and visualization tool for exploring photovoltaic (PV) modules
    python list_db_columns.py
    ```
 
+## Deployment
+
+### Deploying to Railway
+
+1. Create a Railway account at [railway.app](https://railway.app/)
+
+2. Install the Railway CLI:
+   ```
+   npm i -g @railway/cli
+   ```
+
+3. Login to Railway:
+   ```
+   railway login
+   ```
+
+4. Initialize a new Railway project in your repository:
+   ```
+   railway init
+   ```
+
+5. Deploy your application:
+   ```
+   railway up
+   ```
+
+6. Open your deployed application:
+   ```
+   railway open
+   ```
+
+The application will automatically download all required data during the deployment process using the `setup.py` script.
+
 ## Data Structure
 
-The database includes comprehensive information about PV modules including:
+The databases include comprehensive information about various solar equipment:
+
+### PV Modules
 - Manufacturer and model details
 - Power specifications (Pmax, Isc, Voc, etc.)
 - Physical characteristics
 - Certification information
 - Temperature coefficients
 - Unique module ID and timestamp of when data was added
+
+### Inverters
+- Manufacturer and model details
+- Power ratings and efficiency
+- Grid support capabilities
+- Certification information
+- Unique inverter ID and timestamp of when data was added
+
+### Energy Storage Systems
+- Manufacturer and model details
+- Chemistry and capacity
+- Power ratings and voltage
+- PV DC input capability
+- Certification information
+- Unique storage ID and timestamp of when data was added
+
+### Batteries
+- Manufacturer and model details
+- Chemistry and capacity
+- Discharge rate and efficiency
+- Certification information
+- Unique battery ID and timestamp of when data was added
+
+### Meters
+- Manufacturer and model details
+- Display type and PBI meter status
+- Notes and listing dates
+- Unique meter ID and timestamp of when data was added
 
 ## License
 
