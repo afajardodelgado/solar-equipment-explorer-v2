@@ -1,1 +1,1 @@
-web: python setup.py && python -W ignore::RuntimeWarning start_app.py --server.port $PORT --server.address 0.0.0.0 2>/dev/null
+web: python setup.py && python -W ignore::RuntimeWarning start_app.py --server.port $PORT --server.address 0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false --server.maxUploadSize=10
