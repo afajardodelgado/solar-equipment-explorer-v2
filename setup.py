@@ -31,7 +31,7 @@ def run_downloader(downloader_path, python_executable):
     
     # Check if database already exists
     base_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-    db_path = base_dir / db_name
+    db_path = base_dir / 'db' / db_name
     
     if db_path.exists() and db_path.stat().st_size > 0:
         print(f"Database {db_name} already exists, skipping download")
@@ -102,7 +102,7 @@ def run_downloaders():
     
     # List of downloader scripts to run with absolute paths
     downloaders = [
-        base_dir / "pv_module_downloader.py",
+        base_dir / "modules" / "pv_module_downloader.py",
         base_dir / "inverters" / "inverter_downloader.py",
         base_dir / "batteries" / "battery_downloader.py",
         base_dir / "storage" / "energy_storage_downloader.py",

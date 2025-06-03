@@ -10,30 +10,53 @@ A data processing and visualization tool for exploring solar equipment data from
 - **Visualization**: Charts and comparisons to analyze equipment performance
 - **Export Capabilities**: Export filtered data to CSV for further analysis
 
-## Components
+## Project Structure
 
 ### Main Application
 - `solar_explorer.py`: Streamlit-based UI for exploring and visualizing all equipment types
+- `start_app.py`: Wrapper script to launch the Streamlit app with warning filters
+- `setup.py`: Sets up the application by running all downloader scripts
 
-### PV Modules
-- `pv_module_downloader.py`: Downloads and processes the PV module Excel file, storing data in SQLite
+### Data Downloaders
+- `modules/pv_module_downloader.py`: Downloads and processes the PV module Excel file
+- `inverters/inverter_downloader.py`: Downloads and processes the inverter Excel file
+- `storage/energy_storage_downloader.py`: Downloads and processes the energy storage systems Excel file
+- `batteries/battery_downloader.py`: Downloads and processes the batteries Excel file
+- `meters/meter_downloader.py`: Downloads and processes the meters Excel file
 
-### Inverters
-- `inverters/inverter_downloader.py`: Downloads and processes the inverter Excel file, storing data in SQLite
+### Database Files
+- `db/`: Directory containing all SQLite database files
+  - `pv_modules.db`: PV modules database
+  - `inverters.db`: Inverters database
+  - `energy_storage.db`: Energy storage systems database
+  - `batteries.db`: Batteries database
+  - `meters.db`: Meters database
 
-### Energy Storage Systems
-- `storage/energy_storage_downloader.py`: Downloads and processes the energy storage systems Excel file, storing data in SQLite
+### Utility Scripts
+- `utils/`: Directory containing utility scripts for data analysis and export
 
-### Batteries
-- `batteries/battery_downloader.py`: Downloads and processes the batteries Excel file, storing data in SQLite
+### Deployment Configuration
+- `Procfile`: Configuration for Railway deployment
+- `railway.json` and `railway.toml`: Railway platform configuration files
+- `requirements.txt`: Python dependencies
 
-### Meters
-- `meters/meter_downloader.py`: Downloads and processes the meters Excel file, storing data in SQLite
+## Installation and Setup
 
-### Utilities
-- `setup.py`: Sets up all databases by running the downloaders
-- `list_db_columns.py`: Utility script to view database schema
-- `export_with_dates.py`: Exports data with properly formatted dates
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up databases
+python setup.py
+
+# Run the application
+python start_app.py
+```
+
+## Deployment
+
+This application is configured for deployment on Railway. The deployment process is automated through the Procfile and Railway configuration files.
+
 
 ## Installation
 

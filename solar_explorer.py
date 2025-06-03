@@ -127,7 +127,7 @@ BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 
 # Function to get database path
 def get_db_path(db_name):
-    return str(BASE_DIR / db_name)
+    return str(BASE_DIR / 'db' / db_name)
 
 
 # Function to load PV module data
