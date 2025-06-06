@@ -3,6 +3,56 @@ import pandas as pd
 import sqlite3
 from io import BytesIO
 from datetime import datetime
+import re
+
+def parse_date_to_standard_format(date_value):
+    """
+    Parse various date formats and convert to YYYY-MM-DD format.
+    Handles:
+    - Unix timestamps (e.g., 1508137200)
+    - YYYY-M format (e.g., 2017-9)
+    - Already formatted YYYY-MM-DD dates
+    - Pandas datetime and Timestamp objects
+    """
+    if pd.isna(date_value) or date_value == '' or date_value is None:
+        return None
+    
+    # Handle pandas datetime and Timestamp objects
+    if isinstance(date_value, (pd.Timestamp, datetime)):
+        return date_value.strftime('%Y-%m-%d')
+    
+    date_str = str(date_value).strip()
+    
+    # Handle Unix timestamps (numeric values with 10 digits)
+    if date_str.isdigit() and len(date_str) == 10:
+        try:
+            return datetime.fromtimestamp(int(date_str)).strftime('%Y-%m-%d')
+        except (ValueError, OSError):
+            return None
+    
+    # Handle YYYY-M format (e.g., "2017-9")
+    if re.match(r'^\d{4}-\d{1,2}$', date_str):
+        try:
+            # Add day as 01 to make it a valid date
+            year, month = date_str.split('-')
+            return f"{year}-{month.zfill(2)}-01"
+        except ValueError:
+            return None
+    
+    # Handle YYYY-MM-DD format (already correct)
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+        return date_str
+    
+    # Handle other potential formats
+    try:
+        # Try to parse as a general date
+        parsed_date = pd.to_datetime(date_str, errors='coerce')
+        if pd.notna(parsed_date):
+            return parsed_date.strftime('%Y-%m-%d')
+    except:
+        pass
+    
+    return None
 
 # Step 1: Download the Excel file
 url = 'https://solarequipment.energy.ca.gov/Home/DownloadtoExcel?filename=MeterList'
@@ -53,13 +103,11 @@ try:
     # Column E: Note
     new_df['Note'] = df.iloc[:, 4]
     
-    # Column I: CEC Listing Date - Convert Unix timestamp to yyyy-mm-dd
-    new_df['Meter Listing Date'] = df.iloc[:, 8].apply(lambda x: 
-        datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') if pd.notna(x) and str(x).isdigit() else x)
+    # Column I: CEC Listing Date - Convert to standardized YYYY-MM-DD format
+    new_df['Meter Listing Date'] = df.iloc[:, 8].apply(parse_date_to_standard_format)
     
-    # Column J: Last Update - Convert Unix timestamp to yyyy-mm-dd
-    new_df['Last Update'] = df.iloc[:, 9].apply(lambda x: 
-        datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') if pd.notna(x) and str(x).isdigit() else x)
+    # Column J: Last Update - Convert to standardized YYYY-MM-DD format
+    new_df['Last Update'] = df.iloc[:, 9].apply(parse_date_to_standard_format)
     
     # Add the Date Added to Tool column
     new_df['Date Added to Tool'] = current_time
@@ -84,13 +132,11 @@ except Exception as e:
     new_df['Display Type'] = df.iloc[:, 2]  # Column C: Display Type
     new_df['PBI Meter'] = df.iloc[:, 3]  # Column D: PBI Meter
     new_df['Note'] = df.iloc[:, 4]  # Column E: Note
-    # Column I: CEC Listing Date - Convert Unix timestamp to yyyy-mm-dd
-    new_df['Meter Listing Date'] = df.iloc[:, 8].apply(lambda x: 
-        datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') if pd.notna(x) and str(x).isdigit() else x)
+    # Column I: CEC Listing Date - Convert to standardized YYYY-MM-DD format
+    new_df['Meter Listing Date'] = df.iloc[:, 8].apply(parse_date_to_standard_format)
     
-    # Column J: Last Update - Convert Unix timestamp to yyyy-mm-dd
-    new_df['Last Update'] = df.iloc[:, 9].apply(lambda x: 
-        datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d') if pd.notna(x) and str(x).isdigit() else x)
+    # Column J: Last Update - Convert to standardized YYYY-MM-DD format
+    new_df['Last Update'] = df.iloc[:, 9].apply(parse_date_to_standard_format)
     new_df['Date Added to Tool'] = current_time
     new_df['meter_id'] = new_df['Manufacturer'].astype(str) + '_' + new_df['Model Number'].astype(str)
     df = new_df
