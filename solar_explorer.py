@@ -223,7 +223,7 @@ def run_downloader(equipment_type):
     try:
         # Determine which script to run based on equipment type
         if equipment_type == "PV Modules":
-            script_path = str(BASE_DIR / "pv_module_downloader.py")
+            script_path = str(BASE_DIR / "modules" / "pv_module_downloader.py")
         elif equipment_type == "Grid Support Inverter List":
             script_path = str(BASE_DIR / "inverters" / "inverter_downloader.py")
         elif equipment_type == "Energy Storage Systems":
@@ -241,25 +241,23 @@ def run_downloader(equipment_type):
             st.error(f"Downloader script not found: {script_path}")
             return False
         
-        # Use a spinner while downloading data
-        with st.spinner(f"Downloading latest {equipment_type} data..."):
-            # Run the script using subprocess with the correct Python executable
-            python_executable = sys.executable
-            result = subprocess.run([python_executable, script_path], 
-                                  capture_output=True, 
-                                  text=True, 
-                                  check=False)
-            
-            if result.returncode == 0:
-                st.success(f"Successfully updated {equipment_type} database.")
-                # Clear cache to force reload of data
-                st.cache_data.clear()
-                return True
-            else:
-                st.error(f"Error updating {equipment_type} database: {result.stderr}")
-                with st.expander("View Error Details"):
-                    st.code(result.stderr)
-                return False
+        # Run the script using subprocess with the correct Python executable
+        python_executable = sys.executable
+        result = subprocess.run([python_executable, script_path], 
+                              capture_output=True, 
+                              text=True, 
+                              check=False)
+        
+        if result.returncode == 0:
+            st.success(f"Successfully updated {equipment_type} database.")
+            # Clear cache to force reload of data
+            st.cache_data.clear()
+            return True
+        else:
+            st.error(f"Error updating {equipment_type} database: {result.stderr}")
+            with st.expander("View Error Details"):
+                st.code(result.stderr)
+            return False
     except Exception as e:
         st.error(f"Error running downloader: {str(e)}")
         return False
@@ -401,20 +399,23 @@ def display_equipment_data(equipment_type, df, id_column, manufacturer_column, m
                     st.error(f"Search error: {e}. Showing all items instead.")
                     # Keep df as is if there's an error
         
-    # Add a simple refresh button aligned far right
-    refresh_container = st.container()
-    with refresh_container:
-        # Use a very uneven column split to push the button far right
-        _, right_col = st.columns([39, 1])
-        with right_col:
-            # Use a simple circular refresh icon
-            if st.button("⟳", key=f"refresh_button_{equipment_type}", help="Download latest data and refresh"):
-                # Run the appropriate downloader script
-                success = run_downloader(equipment_type)
-                if success:
-                    # Clear cache and reload the app
-                    st.cache_data.clear()
-                    st.experimental_rerun()
+    # Add a simple refresh button aligned far left
+    if st.button("⟳", key=f"refresh_button_{equipment_type}", help="Download latest data and refresh"):
+        # Set downloading state
+        st.session_state[f"downloading_{equipment_type}"] = True
+        st.rerun()
+    
+    # Show downloading spinner below refresh button if downloading
+    if st.session_state.get(f"downloading_{equipment_type}", False):
+        with st.spinner(f"Downloading latest {equipment_type} data..."):
+            # Run the appropriate downloader script
+            success = run_downloader(equipment_type)
+            # Clear downloading state
+            st.session_state[f"downloading_{equipment_type}"] = False
+            if success:
+                # Clear cache and reload the app
+                st.cache_data.clear()
+                st.rerun()
     
     st.write(f"Showing {len(df)} items")
     
