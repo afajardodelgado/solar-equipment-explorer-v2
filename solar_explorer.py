@@ -586,7 +586,7 @@ def display_visualizations(filtered_df, equipment_type, manufacturer_column, eff
     # Add a unique key for each selectbox based on equipment_type
     chart_type = st.selectbox(
         "Select chart type",
-        ["Manufacturer Distribution", "Efficiency Comparison", "Power Comparison", "Correlation Plot"],
+        ["Manufacturer Distribution", "Efficiency Comparison", "Power Comparison"],
         key=f"chart_type_{equipment_type}"
     )
     
@@ -690,27 +690,56 @@ def display_visualizations(filtered_df, equipment_type, manufacturer_column, eff
         except Exception as e:
             st.error(f"Could not create power comparison chart: {e}")
     
-    elif chart_type == "Correlation Plot":
-        # Select only numeric columns for correlation
-        numeric_cols = filtered_df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    # Correlation plots are now a separate visualization type
+
+# Function to display correlation plots as a separate visualization type
+def display_correlation_plots(filtered_df, equipment_type, manufacturer_column):
+    st.subheader("Correlation Analysis")
+    
+    # Select only numeric columns for correlation
+    numeric_cols = filtered_df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    
+    if len(numeric_cols) >= 2:
+        # Add unique keys for each axis selectbox based on equipment_type
+        x_axis = st.selectbox("X-axis", numeric_cols, index=0, key=f"corr_x_axis_{equipment_type}")
+        y_axis = st.selectbox("Y-axis", numeric_cols, index=min(1, len(numeric_cols)-1), key=f"corr_y_axis_{equipment_type}")
         
-        if len(numeric_cols) >= 2:
-            # Add unique keys for each axis selectbox based on equipment_type
-            x_axis = st.selectbox("X-axis", numeric_cols, index=0, key=f"x_axis_{equipment_type}")
-            y_axis = st.selectbox("Y-axis", numeric_cols, index=min(1, len(numeric_cols)-1), key=f"y_axis_{equipment_type}")
-            
-            fig = px.scatter(
-                filtered_df,
-                x=x_axis,
-                y=y_axis,
-                color=manufacturer_column,
-                title=f'{y_axis} vs {x_axis}',
-                color_discrete_sequence=px.colors.qualitative.Bold,
-                height=500
+        fig = px.scatter(
+            filtered_df,
+            x=x_axis,
+            y=y_axis,
+            color=manufacturer_column,
+            title=f'{y_axis} vs {x_axis}',
+            color_discrete_sequence=px.colors.qualitative.Bold,
+            height=500
+        )
+        
+        # Add trendline option
+        add_trendline = st.checkbox("Add trendline", key=f"trendline_{equipment_type}")
+        if add_trendline:
+            fig.update_traces(mode='markers')
+            fig.update_layout(
+                shapes=[
+                    dict(
+                        type='line',
+                        yref='y', xref='x',
+                        x0=filtered_df[x_axis].min(),
+                        y0=filtered_df[y_axis].min(),
+                        x1=filtered_df[x_axis].max(),
+                        y1=filtered_df[y_axis].max(),
+                        line=dict(color='rgba(0,0,0,0.5)', width=2, dash='dash')
+                    )
+                ]
             )
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Not enough numeric columns available for correlation plot.")
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Add correlation coefficient
+        if add_trendline:
+            corr = filtered_df[[x_axis, y_axis]].corr().iloc[0,1]
+            st.info(f"Correlation coefficient between {x_axis} and {y_axis}: {corr:.3f}")
+    else:
+        st.warning("Not enough numeric columns available for correlation plot.")
 
 # Update the tab content to include visualizations
 with tab1:
@@ -722,6 +751,13 @@ with tab1:
         'PTC Efficiency (%)',
         'Power Rating (W)'
     )
+    
+    # Add correlation plots section
+    display_correlation_plots(
+        filtered_df_pv,
+        "PV Modules",
+        'Manufacturer'
+    )
 
 with tab2:
     # Add visualization section for Grid Support Inverter List
@@ -731,6 +767,13 @@ with tab2:
         'Manufacturer Name',
         'Weighted Efficiency (%)',
         'Maximum Continuous Output Power at Unity Power Factor ((kW))'
+    )
+    
+    # Add correlation plots section
+    display_correlation_plots(
+        filtered_df_inv,
+        "Grid Support Inverter List",
+        'Manufacturer Name'
     )
 
 with tab3:
@@ -742,6 +785,13 @@ with tab3:
         'Chemistry',
         'Maximum Discharge Rate (kW)'
     )
+    
+    # Add correlation plots section
+    display_correlation_plots(
+        filtered_df_storage,
+        "Energy Storage Systems",
+        'Manufacturer'
+    )
 
 with tab4:
     # Add visualization section for Batteries
@@ -752,6 +802,13 @@ with tab4:
         'Round Trip Efficiency (%)',
         'Discharge Rate (kW)'
     )
+    
+    # Add correlation plots section
+    display_correlation_plots(
+        filtered_df_battery,
+        "Batteries",
+        'Manufacturer'
+    )
 
 with tab5:
     # Add visualization section for Meters
@@ -761,6 +818,13 @@ with tab5:
         'Manufacturer',
         'Display Type',
         'PBI Meter'
+    )
+    
+    # Add correlation plots section
+    display_correlation_plots(
+        filtered_df_meter,
+        "Meters",
+        'Manufacturer'
     )
 
 # Add equipment comparison functionality to each tab
