@@ -103,10 +103,10 @@ def run_downloaders():
     # List of downloader scripts to run with absolute paths
     downloaders = [
         base_dir / "modules" / "pv_module_downloader.py",
-        base_dir / "inverters" / "inverter_downloader.py",
-        base_dir / "batteries" / "battery_downloader.py",
-        base_dir / "storage" / "energy_storage_downloader.py",
-        base_dir / "meters" / "meter_downloader.py"
+        base_dir / "modules" / "inverter_downloader.py",
+        base_dir / "modules" / "battery_downloader.py",
+        base_dir / "modules" / "energy_storage_downloader.py",
+        base_dir / "modules" / "meter_downloader.py"
     ]
     
     # Run downloaders in parallel if not on Railway
